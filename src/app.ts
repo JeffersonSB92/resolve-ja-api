@@ -3,9 +3,12 @@ import fastify, { FastifyError, FastifyInstance } from 'fastify';
 import { z, ZodError } from 'zod';
 import { env } from './config/env.js';
 import { supabaseAnonClient } from './config/supabase.js';
+import addressRoutes from './modules/addresses/address.routes.js';
+import catalogRoutes from './modules/catalog/catalog.routes.js';
 import authPlugin from './plugins/auth.js';
 import { AppError } from './shared/errors/AppError.js';
 import { errorResponse, successResponse } from './shared/utils/response.js';
+import { validateOrThrow } from './shared/utils/validation.js';
 
 const loginBodySchema = z.object({
   email: z.string().email(),
@@ -35,13 +38,15 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   await app.register(authPlugin);
+  await app.register(catalogRoutes);
+  await app.register(addressRoutes);
 
   app.get('/health', async (_request, reply) => {
     return successResponse(reply, { status: 'ok' });
   });
 
   app.post('/auth/login', async (request, reply) => {
-    const { email, password } = loginBodySchema.parse(request.body);
+    const { email, password } = validateOrThrow(loginBodySchema, request.body);
 
     const { data, error } = await supabaseAnonClient.auth.signInWithPassword({
       email,
