@@ -1,10 +1,17 @@
 import cors from '@fastify/cors';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
 import fastify, { FastifyError, FastifyInstance } from 'fastify';
 import { z, ZodError } from 'zod';
 import { env } from './config/env.js';
 import { supabaseAnonClient } from './config/supabase.js';
 import addressRoutes from './modules/addresses/address.routes.js';
+import adminRoutes from './modules/admin/admin.routes.js';
 import catalogRoutes from './modules/catalog/catalog.routes.js';
+import messageRoutes from './modules/messages/message.routes.js';
+import providerRoutes from './modules/providers/provider.routes.js';
+import quoteRoutes from './modules/quotes/quote.routes.js';
+import requestRoutes from './modules/requests/request.routes.js';
 import authPlugin from './plugins/auth.js';
 import { AppError } from './shared/errors/AppError.js';
 import { errorResponse, successResponse } from './shared/utils/response.js';
@@ -33,6 +40,35 @@ export async function buildApp(): Promise<FastifyInstance> {
     logger: true,
   });
 
+  await app.register(swagger, {
+    openapi: {
+      info: {
+        title: 'ResolveJa API',
+        description: 'API documentation for ResolveJa backend.',
+        version: '1.0.0',
+      },
+      components: {
+        securitySchemes: {
+          bearerAuth: {
+            type: 'http',
+            scheme: 'bearer',
+            bearerFormat: 'JWT',
+          },
+        },
+      },
+    },
+  });
+
+  await app.register(swaggerUi, {
+    routePrefix: '/docs',
+    uiConfig: {
+      docExpansion: 'list',
+      deepLinking: true,
+    },
+    staticCSP: true,
+    transformSpecificationClone: true,
+  });
+
   await app.register(cors, {
     origin: true,
   });
@@ -40,6 +76,11 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(authPlugin);
   await app.register(catalogRoutes);
   await app.register(addressRoutes);
+  await app.register(adminRoutes);
+  await app.register(providerRoutes);
+  await app.register(requestRoutes);
+  await app.register(quoteRoutes);
+  await app.register(messageRoutes);
 
   app.get('/health', async (_request, reply) => {
     return successResponse(reply, { status: 'ok' });
